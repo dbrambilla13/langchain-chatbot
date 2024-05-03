@@ -3,8 +3,14 @@ import openai
 import random
 import streamlit as st
 from datetime import datetime
+import dotenv
 
-#decorator
+dotenv.load_dotenv()
+
+openai_api_key = os.getenv("OPENAI_API_KEY")
+
+
+# decorator
 def enable_chat_history(func):
     if os.environ.get("OPENAI_API_KEY"):
 
@@ -22,13 +28,17 @@ def enable_chat_history(func):
 
         # to show chat history on ui
         if "messages" not in st.session_state:
-            st.session_state["messages"] = [{"role": "assistant", "content": "How can I help you?"}]
+            st.session_state["messages"] = [
+                {"role": "assistant", "content": "How can I help you?"}
+            ]
         for msg in st.session_state["messages"]:
             st.chat_message(msg["role"]).write(msg["content"])
 
     def execute(*args, **kwargs):
         func(*args, **kwargs)
+
     return execute
+
 
 def display_msg(msg, author):
     """Method to display message on the UI
@@ -40,34 +50,42 @@ def display_msg(msg, author):
     st.session_state.messages.append({"role": author, "content": msg})
     st.chat_message(author).write(msg)
 
+
 def configure_openai():
-    openai_api_key = st.sidebar.text_input(
-        label="OpenAI API Key",
-        type="password",
-        value=st.session_state['OPENAI_API_KEY'] if 'OPENAI_API_KEY' in st.session_state else '',
-        placeholder="sk-..."
-        )
+
     if openai_api_key:
-        st.session_state['OPENAI_API_KEY'] = openai_api_key
-        os.environ['OPENAI_API_KEY'] = openai_api_key
+        st.session_state["OPENAI_API_KEY"] = openai_api_key
     else:
         st.error("Please add your OpenAI API key to continue.")
-        st.info("Obtain your key from this link: https://platform.openai.com/account/api-keys")
+        st.info(
+            "Obtain your key from this link: https://platform.openai.com/account/api-keys"
+        )
         st.stop()
 
-    model = "gpt-3.5-turbo"
+    # model = "gpt-3.5-turbo"
+    model = 'gpt-3.5-turbo-16k'
+
     try:
         client = openai.OpenAI()
-        available_models = [{"id": i.id, "created":datetime.fromtimestamp(i.created)} for i in client.models.list() if str(i.id).startswith("gpt")]
+        available_models = [
+            {"id": i.id, "created": datetime.fromtimestamp(i.created)}
+            for i in client.models.list()
+            if str(i.id).startswith("gpt")
+        ]
         available_models = sorted(available_models, key=lambda x: x["created"])
         available_models = [i["id"] for i in available_models]
 
         model = st.sidebar.selectbox(
             label="Model",
             options=available_models,
-            index=available_models.index(st.session_state['OPENAI_MODEL']) if 'OPENAI_MODEL' in st.session_state else 0
+            index=(
+                # available_models.index(st.session_state["OPENAI_MODEL"])
+                available_models.index(model)
+                if "OPENAI_MODEL" in st.session_state
+                else available_models.index(model)
+            ),
         )
-        st.session_state['OPENAI_MODEL'] = model
+        st.session_state["OPENAI_MODEL"] = model
     except openai.AuthenticationError as e:
         st.error(e.body["message"])
         st.stop()
